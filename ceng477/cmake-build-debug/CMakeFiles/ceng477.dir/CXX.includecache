@@ -6,14 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/sbk/CLionProjects/ceng477/main.cpp
-iostream
--
-parser.h
-/home/sbk/CLionProjects/ceng477/parser.h
-ppm.h
-/home/sbk/CLionProjects/ceng477/ppm.h
-
 /home/sbk/CLionProjects/ceng477/parser.cpp
 parser.h
 /home/sbk/CLionProjects/ceng477/parser.h
@@ -37,6 +29,22 @@ stdexcept
 -
 
 /home/sbk/CLionProjects/ceng477/ppm.h
+
+/home/sbk/CLionProjects/ceng477/raytracer.cpp
+iostream
+-
+limits
+-
+parser.h
+/home/sbk/CLionProjects/ceng477/parser.h
+ppm.h
+/home/sbk/CLionProjects/ceng477/ppm.h
+raytracer.h
+/home/sbk/CLionProjects/ceng477/raytracer.h
+
+/home/sbk/CLionProjects/ceng477/raytracer.h
+parser.h
+/home/sbk/CLionProjects/ceng477/parser.h
 
 /home/sbk/CLionProjects/ceng477/tinyxml2.cpp
 tinyxml2.h

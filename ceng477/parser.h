@@ -93,6 +93,9 @@ namespace parser
         //Functions
         void loadFromXml(const std::string& filepath);
     };
+
+
 }
+
 
 #endif
