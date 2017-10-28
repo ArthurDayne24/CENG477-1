@@ -192,14 +192,18 @@ bool faceIntersection(const parser::Face& face , const parser::Scene& scene, con
 int main(int argc, char* argv[]) {
     parser::Scene scene;
 
-    scene.loadFromXml(argv[1]);
+    scene.loadFromXml("/home/sbk/CLionProjects/ceng477/cmake-build-debug/simple.xml");
+//    scene.loadFromXml("hw1_sample_scenes/simple.xml");
+
+    //scene.loadFromXml(argv[1]);
     unsigned char* image;
     unsigned long cameraSize = scene.cameras.size();
-    int j,k,l,f1;
+    unsigned long j,k,l,f1;
     // each camera
     for (int i = 0;  i< cameraSize; i++) {
         //calculateRay
         parser::Vec3f m,q,u;
+
         parser::Camera camera = scene.cameras[i];
         m = camera.position + (camera.gaze*camera.near_distance);
         u = calculateCrossProduct(camera.up,camera.gaze);
@@ -208,12 +212,15 @@ int main(int argc, char* argv[]) {
         int imageHeight = camera.image_height;
         image = new unsigned char [imageWidth * imageHeight * 3];
         // each pixel
-        int counter = 0;
+        unsigned long counter = 0;
         for(j=0; j<imageWidth;j++){
             for(k = 0; k<imageHeight; k++){
                 float su,sv;
+
                 su = (camera.near_plane.y-camera.near_plane.x)*(j+0.5)/imageWidth;
                 sv = (camera.near_plane.w-camera.near_plane.z)*(k+0.5)/imageHeight;
+                //std::cout<<"su->" << su << "sv->" << sv <<std::endl;
+
                 parser::Vec3f s;
                 s = q + (u*su) - (camera.up *sv);
 
@@ -229,20 +236,23 @@ int main(int argc, char* argv[]) {
                 //Mesh
                 unsigned long meshSize = scene.meshes.size();
                 for(l = 0; l<meshSize;l++){
-                    parser::Mesh mesh = scene.meshes[l];
-                    unsigned long faceSize= mesh.faces.size();
+
+                    parser::Mesh *mesh = &(scene.meshes[l]);
+
+                    unsigned long faceSize= mesh->faces.size();
                     //Each face
                     for(f1=0;f1<faceSize;f1++){
-                        parser::Face face = mesh.faces[f1];
-                        faceIntersection(face,scene,ray,rayHitInfo);
 
+                        parser::Face *face = &mesh->faces[f1];
+                        faceIntersection(*face,scene,ray,rayHitInfo);
 
+//                        std::cout<< "height: " << k << "--width:" << j << std::endl;
 
 
                         if (!rayHitInfo.hitInfo) {
-                            image[counter++] = scene.background_color.x;
-                            image[counter++] = scene.background_color.y;
-                            image[counter++] = scene.background_color.z;
+                            image[counter++] = (unsigned char)scene.background_color.x;
+                            image[counter++] = (unsigned char)scene.background_color.y;
+                            image[counter++] = (unsigned char)scene.background_color.z;
 
                         }else{
                             image[counter++] = 255;
@@ -255,11 +265,14 @@ int main(int argc, char* argv[]) {
 
                 }
             }
+            if(j>399)
+                write_ppm("/home/sbk/CLionProjects/ceng477/cmake-build-debug/simple.ppm", image, imageWidth, imageHeight);
 
 
         }
 
-        write_ppm(argv[2], image, imageWidth, imageHeight);
+        //write_ppm(argv[2], image, imageWidth, imageHeight);
+//        write_ppm("hello.ppm", image, imageWidth, imageHeight);
 
 
 
