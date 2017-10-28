@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/ceng477.dir/parser.cpp.o CMakeFiles/ceng477.dir/ppm.cpp.o CMakeFiles/ceng477.dir/tinyxml2.cpp.o CMakeFiles/ceng477.dir/raytracer.cpp.o  -o ceng477 
