@@ -34,7 +34,6 @@ parser::Vec3f operator*(const parser::Vec3f& v1, float alpha){
 }
 
 
-
 class Ray {
     private:
         parser::Vec3f origin;

@@ -241,6 +241,183 @@ bool sphereIntersection(const parser::Sphere& sphere, const parser::Scene& scene
 
 }
 
+float lengthOfVector(const parser::Vec3f& v1){
+    float result = 0;
+    result = sqrtf(v1.x*v1.x+v1.y*v1.y+v1.z*v1.z);
+    return result;
+}
+
+float distanceOfVectors(const parser::Vec3f& v1, const parser::Vec3f& v2){
+    float result = 0;
+    result += (v2.x-v1.x)*(v2.x-v1.x);
+    result += (v2.y-v1.y)*(v2.y-v1.y);
+    result += (v2.z-v1.z)*(v2.z-v1.z);
+
+    result = sqrtf(result);
+    return result;
+}
+
+parser::Vec3f coloring(Ray& ray, int counterForDepth, RayInfo& rayHitInfo, parser::Scene& scene, parser::Camera& camera){
+
+    parser::Vec3f color;
+    if (counterForDepth < 0) {
+        color.x = 0;
+        color.y = 0;
+        color.z = 0;
+        return color;
+    }
+
+
+
+    color.x = rayHitInfo.material.ambient.x * scene.ambient_light.x;
+    color.y = rayHitInfo.material.ambient.y * scene.ambient_light.y;
+    color.z = rayHitInfo.material.ambient.z * scene.ambient_light.z;
+
+    int lightSize = scene.point_lights.size();
+    int l;
+
+    for(l=0;l<lightSize;l++){
+        parser::PointLight *pointLight = &(scene.point_lights[l]);
+        parser::Vec3f pointToRayHit = pointLight->position - rayHitInfo.rayPosition;
+
+        parser::Vec3f Wi= (pointToRayHit) * (1/(lengthOfVector(pointToRayHit)));
+
+        bool sphereShadowFlag = false;
+        bool dummyFlag = false;
+        bool meshShadowFlag = false;
+
+        Ray shadowRay(rayHitInfo.rayPosition + Wi * scene.shadow_ray_epsilon, Wi);
+        RayInfo shadowHitInfo;
+
+        float tLight = (pointLight->position - shadowRay.Origin()).x
+                       / shadowRay.Direction().x;
+
+
+        //Sphere Shadow
+
+        int sphereSize = scene.spheres.size();
+        for(l=0; l<sphereSize;l++){
+            parser::Sphere *sphere = &scene.spheres[l];
+            sphereIntersection(*sphere,scene,shadowRay,shadowHitInfo,scene.materials[sphere->material_id-1]);
+            // if shadow hit object
+            if(shadowHitInfo.hitInfo){
+                if(tLight > shadowHitInfo.rayParameter){
+                    sphereShadowFlag = true;
+                    dummyFlag = true;
+                }
+
+            }
+        }
+
+        // Mesh Shadow
+        if(!sphereShadowFlag){
+            //Mesh
+            int meshSize = scene.meshes.size(),f1;
+            for(l = 0; l<meshSize;l++){
+
+                parser::Mesh *mesh = &(scene.meshes[l]);
+
+                int faceSize= mesh->faces.size();
+                //Each face
+                for(f1=0;f1<faceSize;f1++){
+
+                    parser::Face *face = &mesh->faces[f1];
+                    faceIntersection(*face,scene,shadowRay,shadowHitInfo,scene.materials[mesh->material_id-1]);
+                    // if shadow hit object
+                    if(shadowHitInfo.hitInfo){
+                        if(tLight > shadowHitInfo.rayParameter){
+                            meshShadowFlag = true;
+                            dummyFlag = true;
+                        }
+
+                    }
+
+                }
+
+            }
+        }
+
+
+        //TriangleShadow
+        if(!meshShadowFlag || !sphereShadowFlag){
+            //Triangle
+            int triangleSize = scene.triangles.size();
+            for(l=0; l<triangleSize;l++){
+                parser::Triangle *triangle = &scene.triangles[l];
+                triangleIntersection(*triangle,scene,shadowRay,shadowHitInfo,scene.materials[triangle->material_id-1]);
+
+                if(shadowHitInfo.hitInfo){
+                    if(tLight > shadowHitInfo.rayParameter){
+                        dummyFlag = true;
+                    }
+
+                }
+
+            }
+        }
+
+        if(!dummyFlag){
+            parser::Vec3f cameraToRayHit = camera.position - rayHitInfo.rayPosition;
+            parser::Vec3f Wo = cameraToRayHit * (1/lengthOfVector(cameraToRayHit));
+
+            parser::Vec3f normal = rayHitInfo.rayNormal;
+
+            float cosTheta = std::max(0.0f, calculateDotProduct(Wi, normal));
+            parser::Vec3f h = (Wi + Wo) *(1/ lengthOfVector(Wi + Wo));
+            float cosAlpha = std::max(0.0f,calculateDotProduct(normal,h));
+
+            parser::Vec3f radiance = pointLight->intensity * (1/((powf(distanceOfVectors(pointLight->position,rayHitInfo.rayPosition),2))));
+
+
+
+            parser::Vec3f Wr = (Wo * -1) + (normal * (calculateDotProduct(normal, Wo)) * 2);
+
+            // Diffusing
+            color.x += rayHitInfo.material.diffuse.x * cosTheta * radiance.x;
+            color.y += rayHitInfo.material.diffuse.y * cosTheta * radiance.y;
+            color.z += rayHitInfo.material.diffuse.z * cosTheta * radiance.z;
+
+            //Specular
+            float phongOp = powf(cosAlpha,rayHitInfo.material.phong_exponent);
+            color.x += rayHitInfo.material.specular.x *phongOp * radiance.x;
+            color.y += rayHitInfo.material.specular.y *phongOp * radiance.y;
+            color.z += rayHitInfo.material.specular.z *phongOp * radiance.z;
+
+
+
+
+            //Reflection
+            Ray reflectionRay(rayHitInfo.rayPosition + Wr * scene.shadow_ray_epsilon, Wr);
+
+            parser::Vec3f reflectionColor;
+            reflectionColor =reflectionColor + coloring(reflectionRay,counterForDepth-1,rayHitInfo,scene,camera);
+            color.x += reflectionColor.x * rayHitInfo.material.mirror.x;
+            color.y += reflectionColor.y * rayHitInfo.material.mirror.y;
+            color.z += reflectionColor.z * rayHitInfo.material.mirror.z;
+
+        }
+
+
+
+    }
+
+    // Control case and adapt it for RGB->0-255
+    if (color.x > 255.0) {
+        color.x = 255.0;
+    }
+
+    if (color.y > 255.0) {
+        color.y = 255.0;
+    }
+
+    if (color.z > 255.0) {
+        color.z = 255.0;
+    }
+
+
+    return color;
+
+}
 
 int main(int argc, char* argv[]) {
     parser::Scene scene;
@@ -312,7 +489,7 @@ int main(int argc, char* argv[]) {
 
                 //Sphere
                 int sphereSize = scene.spheres.size();
-                for(l=0; l<triangleSize;l++){
+                for(l=0; l<sphereSize;l++){
                     parser::Sphere *sphere = &scene.spheres[l];
                     sphereIntersection(*sphere,scene,ray,rayHitInfo,scene.materials[sphere->material_id-1]);
                 }
@@ -324,9 +501,13 @@ int main(int argc, char* argv[]) {
                     image[3*(j*imageHeight+k)+2] = (unsigned char)scene.background_color.z;
 
                 }else{
-                    image[3*(j*imageHeight+k)] = 255;
-                    image[3*(j*imageHeight+k)+1] = 255;
-                    image[3*(j*imageHeight+k)+2] = 255;
+
+                    parser::Vec3f color;
+                    color = coloring(ray,scene.max_recursion_depth,rayHitInfo,scene,camera);
+
+                    image[3*(j*imageHeight+k)] = color.x;
+                    image[3*(j*imageHeight+k)+1] = color.y;
+                    image[3*(j*imageHeight+k)+2] = color.z;
 
 
                 }
@@ -337,7 +518,7 @@ int main(int argc, char* argv[]) {
 
         }
 
-        write_ppm(argv[2], image, imageWidth, imageHeight);
+        write_ppm(camera.image_name.c_str(), image, imageWidth, imageHeight);
 //        write_ppm("hello.ppm", image, imageWidth, imageHeight);
         //write_ppm("/home/sbk/CLionProjects/ceng477/cmake-build-debug/bunny.ppm", image, imageWidth, imageHeight);
 
