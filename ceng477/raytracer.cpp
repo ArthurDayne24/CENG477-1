@@ -6,7 +6,7 @@
 #include "parser.h"
 #include "ppm.h"
 #include "raytracer.h"
-
+#include "math.h"
 
 RayInfo::RayInfo(){
     this->rayParameter = std::numeric_limits<float>::max();
@@ -33,6 +33,16 @@ float calculateDeterminant(float matrix[3][3]){
     return result;
 }
 
+float calculateDotProduct(const parser::Vec3f& v1, const parser::Vec3f& v2){
+    float result = 0;
+    result += (v1.x * v2.x);
+    result += (v1.y * v2.y);
+    result += (v1.z * v2.z);
+
+    return  result;
+
+}
+
 parser::Vec3f getVertexFromIndeces(int vertex,const parser::Scene& scene){
     return scene.vertex_data[vertex-1];
 }
@@ -43,6 +53,76 @@ parser::Vec3f calculateCrossProduct(const parser::Vec3f &v1, const parser::Vec3f
     result.y = v1.z * v2.x - v1.x * v2.z;
     result.z = v1.x * v2.y - v1.y * v2.x;
     return result;
+}
+
+bool triangleIntersection(const parser::Triangle& triangle , const parser::Scene& scene, const Ray& ray, RayInfo& rayHitInfo, const parser::Material& material){
+
+
+
+
+    parser::Vec3f v0 = getVertexFromIndeces(triangle.indices.v0_id,scene);
+    parser::Vec3f v1 = getVertexFromIndeces(triangle.indices.v1_id,scene);
+    parser::Vec3f v2 = getVertexFromIndeces(triangle.indices.v2_id,scene);
+
+    parser::Vec3f direction = ray.Direction();
+    parser::Vec3f origin = ray.Origin();
+
+    //Cramer's rule
+    float matrixA[3][3] = {
+            {v0.x-v1.x, v0.x-v2.x, direction.x},
+            {v0.y-v1.y, v0.y-v2.y, direction.y},
+            {v0.z-v1.z, v0.z-v2.z, direction.z}
+    };
+
+    float betaMatrix[3][3] = {
+            {v0.x-origin.x, v0.x-v2.x, direction.x},
+            {v0.y-origin.y, v0.y-v2.y, direction.y},
+            {v0.z-origin.z, v0.z-v2.z, direction.z}
+
+    };
+
+    float gamaMatrix[3][3] = {
+            {v0.x-v1.x, v0.x-origin.x, direction.x},
+            {v0.y-v1.y, v0.y-origin.y, direction.y},
+            {v0.z-v1.z, v0.z-origin.z, direction.z}
+
+    };
+
+    float tMatrix[3][3] = {
+            {v0.x-v1.x, v0.x-v2.x, v0.x-origin.x},
+            {v0.y-v1.y, v0.y-v2.y, v0.y-origin.y},
+            {v0.z-v1.z, v0.z-v2.z, v0.z-origin.z}
+
+    };
+
+    float detA = calculateDeterminant(matrixA);
+    if(detA == 0.0)
+        return false;
+    float detGama = calculateDeterminant(gamaMatrix);
+    float detBeta = calculateDeterminant(betaMatrix);
+    float detT = calculateDeterminant(tMatrix);
+
+    float beta = detBeta/detA;
+    float gama = detGama/detA;
+    float t = detT/detA;
+
+
+    if (t > 0 && beta + gama <= 1 && 0 <= beta && 0 <= gama){
+
+        if (t < rayHitInfo.rayParameter) {
+            rayHitInfo.rayParameter = t;
+            rayHitInfo.rayPosition = origin + direction * rayHitInfo.rayParameter;
+            rayHitInfo.rayNormal = calculateCrossProduct(v2-v1,v0-v1);
+            rayHitInfo.hitInfo = true;
+            rayHitInfo.material = material;
+            return  true;
+        }
+
+
+    }
+
+    return  false;
+
 }
 
 
@@ -121,6 +201,47 @@ bool faceIntersection(const parser::Face& face , const parser::Scene& scene, con
 }
 
 
+bool sphereIntersection(const parser::Sphere& sphere, const parser::Scene& scene, const Ray& ray, RayInfo& rayHitInfo, parser::Material& material){
+    parser::Vec3f c = getVertexFromIndeces(sphere.center_vertex_id,scene);
+
+    parser::Vec3f direction = ray.Direction();
+    parser::Vec3f origin = ray.Origin();
+
+    float A = calculateDotProduct(direction,direction);
+    parser::Vec3f originMinusCenter = origin-c;
+    float B = 2*(calculateDotProduct(direction,originMinusCenter));
+    float C = (calculateDotProduct(originMinusCenter,originMinusCenter)) - (sphere.radius*sphere.radius);
+
+    //Calculate delta
+    float delta = sqrt(B*B - 4*A*C);
+    if(delta>=0.0){
+        float t1 = (-1*B + delta) / 2*A;
+        float t2 = (-1*B - delta) / 2*A;
+        float t = 0;
+        if(t1>=t2)
+            t = t2;
+        else
+            t = t1;
+
+        if (t2 < rayHitInfo.rayParameter) {
+            rayHitInfo.rayParameter = t;
+            rayHitInfo.rayPosition = origin + direction * rayHitInfo.rayParameter;
+
+            parser::Vec3f rayMinusCenter = rayHitInfo.rayPosition-c;
+            rayHitInfo.rayNormal = rayMinusCenter*(1.0/sphere.radius);
+
+            rayHitInfo.hitInfo = true;
+            rayHitInfo.material = material;
+            return  true;
+        }
+    }
+    return  false;
+
+
+
+}
+
+
 int main(int argc, char* argv[]) {
     parser::Scene scene;
 
@@ -182,6 +303,19 @@ int main(int argc, char* argv[]) {
 
                 }
 
+                //Triangle
+                int triangleSize = scene.triangles.size();
+                for(l=0; l<triangleSize;l++){
+                    parser::Triangle *triangle = &scene.triangles[l];
+                    triangleIntersection(*triangle,scene,ray,rayHitInfo,scene.materials[triangle->material_id-1]);
+                }
+
+                //Sphere
+                int sphereSize = scene.spheres.size();
+                for(l=0; l<triangleSize;l++){
+                    parser::Sphere *sphere = &scene.spheres[l];
+                    sphereIntersection(*sphere,scene,ray,rayHitInfo,scene.materials[sphere->material_id-1]);
+                }
 
 
                 if (!rayHitInfo.hitInfo) {
