@@ -52,6 +52,8 @@ public:
     parser::Vec3f rayNormal;
     float rayParameter;
     bool hitInfo;
+    parser::Material material;
+    RayInfo();
 
 
 };
