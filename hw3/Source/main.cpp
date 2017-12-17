@@ -134,23 +134,23 @@ float *matrixMultiplicationFourByOne(float *firstMatrix, float *secondMatrix) {
 
 void doRotation(bool isA, bool isU, bool UJOperation) {
 
-    std::cout << isA << "-"
+/*    std::cout << isA << "-"
               << isU << "-"
-              << UJOperation << "\n";
+              << UJOperation << "\n";*/
     parser::Vec3f u = scene.camera.up;
-    std::cout << "u vector old:" << u.x << '*'
+/*    std::cout << "u vector old:" << u.x << '*'
               << u.y << '*'
-              << u.z << '\n';
-    if (UJOperation && !isU) {
-        std::cout << "pressing j" << std::endl;
+              << u.z << '\n';*/
+    /*if (UJOperation && !isU ) {
+//        std::cout << "pressing j" << std::endl;
         u = parser::calculateCrossProduct(scene.camera.gaze, scene.camera.up);
     } else if (UJOperation && isU) {
-        std::cout << "pressing u" << std::endl;
+//        std::cout << "pressing u" << std::endl;
         u = parser::calculateCrossProduct(scene.camera.up, scene.camera.gaze);
-    }
-    std::cout << "u vector new:" << u.x << '*'
+    }*/
+    /*std::cout << "u vector new:" << u.x << '*'
               << u.y << '*'
-              << u.z << '\n';
+              << u.z << '\n';*/
     parser::Vec3f v = doV_vector(u);
     parser::Vec3f w = parser::calculateCrossProduct(u, v);
 
@@ -209,16 +209,16 @@ void doRotation(bool isA, bool isU, bool UJOperation) {
         r[6] = -1 * sinf(-1 * 0.5 * PI / 180.0);
         r[9] = sinf(-1 * 0.5 * PI / 180.0);
         r[10] = cosf(-1 * 0.5 * PI / 180.0);
-    } else if (UJOperation && !isU) {
-        r[5] = cosf(-1 * 0.5 * PI / 180.0);
-        r[6] = -1 * sinf(-1 * 0.5 * PI / 180.0);
-        r[9] = sinf(-1 * 0.5 * PI / 180.0);
-        r[10] = cosf(-1 * 0.5 * PI / 180.0);
     } else if (UJOperation && isU) {
+        r[0] = cosf(-1 * 0.5 * PI / 180.0);
+        r[1] = -1 * sinf(-1 * 0.5 * PI / 180.0);
+        r[4] = sinf(-1 * 0.5 * PI / 180.0);
         r[5] = cosf(-1 * 0.5 * PI / 180.0);
-        r[6] = -1 * sinf(-1 * 0.5 * PI / 180.0);
-        r[9] = sinf(-1 * 0.5 * PI / 180.0);
-        r[10] = cosf(-1 * 0.5 * PI / 180.0);
+    } else if (UJOperation && !isU) {
+        r[0] = cosf(1 * 0.5 * PI / 180.0);
+        r[1] = -1 * sinf(1 * 0.5 * PI / 180.0);
+        r[4] = sinf(1 * 0.5 * PI / 180.0);
+        r[5] = cosf(1 * 0.5 * PI / 180.0);
     }
 
 
